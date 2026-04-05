@@ -1,0 +1,78 @@
+.Storie {
+  width: 100%;
+  padding: 10px 0;
+}
+
+.group-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px;
+}
+
+.story-avatar {
+  width: 58px;
+  height: 58px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #ec4899; /* border-pink-500 */
+  border-radius: 50%;
+  padding: 2px;
+  background-color: #000000;
+  overflow: hidden;
+}
+
+.story-avatar > img {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.username {
+  margin-top: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  word-break: break-word;
+  max-width: 70px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* storie.module.css */
+.Storie {
+  width: 100%;
+  padding: 10px 0;
+  position: relative;
+}
+
+/* Sử dụng :global để áp dụng style cho class global của Swiper */
+:global(.swiper-button-prev),
+:global(.swiper-button-next) {
+  color: #ffffff !important;
+  width: 20px !important;
+  height: 20px !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+:global(.swiper-button-prev) {
+  left: -5px !important;
+}
+
+:global(.swiper-button-next) {
+  right: -5px !important;
+}
+
+:global(.swiper-button-prev:after),
+:global(.swiper-button-next:after) {
+  font-size: 12px !important;
+}

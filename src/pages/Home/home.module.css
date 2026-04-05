@@ -1,0 +1,8 @@
+.HomePage {
+  overflow-y: auto;
+  height: 100%;
+  /* background-color: lightblue; */
+  box-sizing: border-box; /* Đảm bảo nội dung trong cột phải không bị chạm */
+  padding-right: 20px; /* Đảm bảo có không gian để cuộn nội dung */
+  margin: 0 30%;
+}

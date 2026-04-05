@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Messenger Socket.IO</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        #app {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        #status {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        #online-users {
+            margin: 10px 0;
+            padding: 10px;
+            background: #e0f7fa;
+            border-radius: 6px;
+        }
+
+        #chat-window {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .message {
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 70%;
+        }
+
+        .sent {
+            background: #dcf8c6;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        .received {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+        }
+
+        .system {
+            color: #888;
+            font-size: 0.9em;
+            text-align: center;
+        }
+
+        #input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        #send-btn {
+            padding: 10px 20px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #typing {
+            font-style: italic;
+            color: #555;
+            min-height: 1.2em;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <h2>Messenger Test (Socket.IO)</h2>
+
+        <div>
+            <label>User ID của bạn: </label>
+            <input type="number" id="my-user-id" value="1" min="1" />
+            <button id="connect-btn">Kết nối</button>
+            <span id="status">Chưa kết nối</span>
+        </div>
+
+        <div id="online-users">
+            <strong>Người online:</strong> <span id="online-list">Chưa có</span>
+        </div>
+
+        <div>
+            <label>Gửi tin nhắn đến user ID: </label>
+            <input type="number" id="receiver-id" value="2" min="1" />
+        </div>
+
+        <div id="chat-window"></div>
+        <div id="typing"></div>
+
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="Nhập tin nhắn..." />
+            <button id="send-btn">Gửi</button>
+        </div>
+    </div>
+
+    <!-- Socket.IO client -->
+    <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
+    <script>
+        const socket = io('http://localhost:5000/messenger', {
+            autoConnect: false,
+            query: {} // sẽ set userId sau
+        });
+
+        let myUserId = null;
+        let currentReceiverId = null;
+
+        const statusEl = document.getElementById('status');
+        const onlineListEl = document.getElementById('online-list');
+        const chatWindow = document.getElementById('chat-window');
+        const typingEl = document.getElementById('typing');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        // ======================
+        // Kết nối
+        // ======================
+        document.getElementById('connect-btn').onclick = () => {
+            myUserId = parseInt(document.getElementById('my-user-id').value);
+            if (!myUserId || isNaN(myUserId)) {
+                alert('Vui lòng nhập User ID hợp lệ');
+                return;
+            }
+
+            socket.io.opts.query = { userId: myUserId };
+            socket.connect();
+
+            statusEl.textContent = `Đang kết nối với ID ${myUserId}...`;
+        };
+
+        socket.on('connect', () => {
+            statusEl.textContent = `Đã kết nối (ID: ${myUserId})`;
+            addSystemMessage(`Bạn đã kết nối với ID ${myUserId}`);
+        });
+
+        socket.on('connect_error', (err) => {
+            statusEl.textContent = 'Kết nối lỗi: ' + err.message;
+        });
+
+        socket.on('disconnect', () => {
+            statusEl.textContent = 'Đã ngắt kết nối';
+            addSystemMessage('Mất kết nối với server');
+        });
+
+        // ======================
+        // Online / Offline
+        // ======================
+        socket.on('user:online', ({ userId }) => {
+            addSystemMessage(`User ${userId} vừa online`);
+            updateOnlineUsers();
+        });
+
+        socket.on('user:offline', ({ userId }) => {
+            addSystemMessage(`User ${userId} vừa offline`);
+            updateOnlineUsers();
+        });
+
+        socket.on('users:online', ({ userIds }) => {
+            onlineListEl.textContent = userIds.length ? userIds.join(', ') : 'Không có ai';
+        });
+
+        function updateOnlineUsers() {
+            socket.emit('users:online');
+        }
+
+        // ======================
+        // Typing
+        // ======================
+        let typingTimeout = null;
+
+        messageInput.oninput = () => {
+            if (!currentReceiverId) return;
+
+            socket.emit('typing:start', {
+                senderId: myUserId,
+                receiverId: currentReceiverId
+            });
+
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                socket.emit('typing:stop', {
+                    senderId: myUserId,
+                    receiverId: currentReceiverId
+                });
+            }, 2000);
+        };
+
+        socket.on('typing:start', ({ userId }) => {
+            if (userId === currentReceiverId) {
+                typingEl.textContent = `User ${userId} đang nhập...`;
+            }
+        });
+
+        socket.on('typing:stop', ({ userId }) => {
+            if (userId === currentReceiverId) {
+                typingEl.textContent = '';
+            }
+        });
+
+        // ======================
+        // Tin nhắn
+        // ======================
+        document.getElementById('receiver-id').onchange = () => {
+            currentReceiverId = parseInt(document.getElementById('receiver-id').value);
+            chatWindow.innerHTML = ''; // clear chat khi đổi người nhận (đơn giản hóa test)
+            addSystemMessage(`Đang chat với user ${currentReceiverId}`);
+        };
+
+        sendBtn.onclick = sendMessage;
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || !currentReceiverId) return;
+
+            const msg = {
+                senderId: myUserId,
+                receiverId: currentReceiverId,
+                content: text,
+                type: 'text' // bạn có thể thêm image, file,... sau
+            };
+
+            socket.emit('message:send', msg);
+            messageInput.value = '';
+        }
+
+        socket.on('message:sent', (msg) => {
+            addMessage(msg, true); // tin của mình
+        });
+
+        socket.on('message:receive', (msg) => {
+            addMessage(msg, false); // tin nhận được
+
+            // Tự động đánh dấu đã đọc (test)
+            setTimeout(() => {
+                socket.emit('message:read', {
+                    messageId: msg.id,
+                    userId: myUserId
+                });
+            }, 1500);
+        });
+
+        socket.on('message:read', ({ messageId, readBy, readAt }) => {
+            // Có thể highlight tin nhắn đã đọc, nhưng ở đây chỉ log
+            console.log(`Tin ${messageId} đã được user ${readBy} đọc lúc ${readAt}`);
+            // Bạn có thể thêm dấu tick xanh trong UI nếu muốn
+        });
+
+        socket.on('message:error', ({ error }) => {
+            addSystemMessage('Lỗi: ' + error);
+        });
+
+        function addMessage(msg, isSent) {
+            const div = document.createElement('div');
+            div.className = `message ${isSent ? 'sent' : 'received'}`;
+            div.innerHTML = `
+        <strong>${isSent ? 'Bạn' : `User ${msg.senderId}`}</strong><br>
+        ${msg.content}<br>
+        <small>${new Date(msg.createdAt).toLocaleTimeString()}</small>
+        <small> • ${msg.status || ''}</small>
+      `;
+            chatWindow.appendChild(div);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function addSystemMessage(text) {
+            const div = document.createElement('div');
+            div.className = 'message system';
+            div.textContent = text;
+            chatWindow.appendChild(div);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+    </script>
+</body>
+
+</html>
