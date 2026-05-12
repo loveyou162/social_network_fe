@@ -1,5 +1,6 @@
-import { Outlet, useLocation, useNavigation } from "react-router-dom";
+import { Outlet, useLocation, useNavigation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import InstagramNavbar from "../component/navbar";
 import classes from './rootLayout.module.css'
 import { Box, LinearProgress } from "@mui/material";
@@ -7,7 +8,16 @@ import { Box, LinearProgress } from "@mui/material";
 function RootLayout() {
     const location = useLocation();
     const navigation = useNavigation();
+    const navigate = useNavigate();
     const [isNavigating, setIsNavigating] = useState(false);
+    const { isAuthenticated } = useSelector((state) => state.auth);
+
+    // Kiểm tra token, nếu không có thì đẩy sang trang login
+    useEffect(() => {
+        if (!isAuthenticated) {
+            navigate('/login');
+        }
+    }, [isAuthenticated, navigate]);
 
     // Kích hoạt thanh loading mỗi khi route (pathname) thay đổi
     useEffect(() => {
@@ -26,7 +36,7 @@ function RootLayout() {
         <div className={classes.container}>
             {isLoading && (
                 <Box sx={{ width: '100%', position: 'fixed', top: 0, left: 0, zIndex: 9999 }}>
-                    <LinearProgress 
+                    <LinearProgress
                         sx={{
                             height: '3px',
                             backgroundColor: 'transparent',
@@ -37,7 +47,14 @@ function RootLayout() {
                     />
                 </Box>
             )}
-            <InstagramNavbar />
+            {/* Sidebar (Desktop/Tablet): ẩn trên mobile vì navbar sẽ tự render bottom nav */}
+            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <InstagramNavbar />
+            </Box>
+            {/* Bottom Nav (Mobile only): render riêng, không chiếm cột trong grid */}
+            <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <InstagramNavbar />
+            </Box>
             <main>
                 <Outlet />
             </main>

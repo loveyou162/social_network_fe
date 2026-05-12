@@ -1,131 +1,115 @@
-// components/StorySlider.tsx
+import React, { useState, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation } from 'swiper/modules'; // Import module Navigation để có nút điều hướng
-import 'swiper/css'; // Import CSS cơ bản
-import 'swiper/css/navigation'; // Import CSS cho navigation
+import { Navigation } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
 import classes from './storie.module.css';
-
-const stories = [
-    {
-        id: 1,
-        username: '_thnhhuyen',
-        avatar: 'https://cdn.pixabay.com/photo/2025/03/07/14/18/waterfall-9453143_640.jpg',
-    },
-    {
-        id: 2,
-        username: 'ggotbban...',
-        avatar: 'https://cdn.pixabay.com/photo/2024/11/30/15/55/eiffel-tower-9235220_1280.jpg',
-    },
-    {
-        id: 3,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2022/02/13/17/22/cartoon-easter-bunny-7011655_640.jpg',
-    },
-    {
-        id: 4,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2022/02/13/17/22/cartoon-easter-bunny-7011655_640.jpg',
-    },
-    {
-        id: 5,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2022/02/13/17/22/cartoon-easter-bunny-7011655_640.jpg',
-    },
-    {
-        id: 6,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2022/02/13/17/22/cartoon-easter-bunny-7011655_640.jpg',
-    },
-    {
-        id: 7,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2022/02/13/17/22/cartoon-easter-bunny-7011655_640.jpg',
-    },
-    {
-        id: 8,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2023/02/04/07/38/cherry-blossoms-7766587_640.jpg',
-    },
-    {
-        id: 9,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2022/02/13/17/22/cartoon-easter-bunny-7011655_640.jpg',
-    },
-    {
-        id: 10,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2025/03/19/16/52/hands-9481149_640.jpg',
-    },
-    {
-        id: 11,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2025/03/19/16/52/hands-9481149_640.jpg',
-    },
-    {
-        id: 12,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2025/03/19/16/52/hands-9481149_640.jpg',
-    },
-    {
-        id: 13,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2025/03/19/16/52/hands-9481149_640.jpg',
-    },
-    {
-        id: 14,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2025/03/19/16/52/hands-9481149_640.jpg',
-    },
-    {
-        id: 15,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2025/03/19/16/52/hands-9481149_640.jpg',
-    },
-    {
-        id: 16,
-        username: 'peary_pinn',
-        avatar: 'https://cdn.pixabay.com/photo/2025/03/19/16/52/hands-9481149_640.jpg',
-    },
-    // thêm nhiều người nữa
-];
+import storyApi from '../api/storyApi';
+import CreateStoryModal from './CreateStoryModal';
+import StoryViewer from './StoryViewer';
+import { useSelector } from 'react-redux';
+import { Add } from '@mui/icons-material';
 
 export default function StorySlider() {
+    const [stories, setStories] = useState([]);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isViewerOpen, setIsViewerOpen] = useState(false);
+    const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
+    const { user } = useSelector((state) => state.auth);
+    console.log(user, stories);
+    useEffect(() => {
+        fetchStories();
+    }, []);
+
+    const fetchStories = async () => {
+        try {
+            const response = await storyApi.getStoryFeed();
+            setStories(response.data || response);
+        } catch (error) {
+            console.error('Lỗi khi lấy stories:', error);
+        }
+    };
+
+    const handleStoryClick = (index) => {
+        setSelectedStoryIndex(index);
+        setIsViewerOpen(true);
+    };
+
     return (
         <div className={classes['Storie']}>
             <Swiper
-                modules={[Navigation]} // Kích hoạt module Navigation
-                spaceBetween={5} // Khoảng cách giữa các slide
-                slidesPerView={6} // Hiển thị 5 slide cùng lúc
-                slidesPerGroup={4} // Cuộn 2 slide mỗi lần
-                navigation // Bật nút điều hướng
-                // loop={true}
+                modules={[Navigation]}
+                spaceBetween={5}
+                slidesPerView={6}
+                slidesPerGroup={4}
+                navigation
                 observer={true}
-            // breakpoints={{
-            //     768: {
-            //         slidesPerView: 4,
-            //         slidesPerGroup: 1,
-            //     },
-            //     480: {
-            //         slidesPerView: 3,
-            //         slidesPerGroup: 1,
-            //     },
-            // }}
             >
-                {stories.map((story) => (
+                {/* Nút tạo story */}
+                <SwiperSlide>
+                    <div className={classes['group-item']} onClick={() => setIsCreateModalOpen(true)} style={{ cursor: 'pointer' }}>
+                        <div className={classes['story-avatar']} style={{ position: 'relative' }}>
+                            <img
+                                src={user?.avatarUrl || "https://via.placeholder.com/150"}
+                                alt=""
+                                style={{ backgroundColor: '#262626' }}
+                                className="rounded-full border-2 border-gray-300 p-[2px] w-16 h-16 object-cover"
+                            />
+                            <div style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                right: 0,
+                                background: '#0095f6',
+                                borderRadius: '50%',
+                                border: '2px solid black',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 22,
+                                height: 22
+                            }}>
+                                <Add sx={{ color: 'white', fontSize: 18 }} />
+                            </div>
+                        </div>
+                        <p className={classes['username']}>Tin của bạn</p>
+                    </div>
+                </SwiperSlide>
+
+                {stories.map((story, index) => (
                     <SwiperSlide key={story.id}>
-                        <div className={classes['group-item']}>
-                            <div className={classes['story-avatar']}>
+                        <div className={classes['group-item']} onClick={() => handleStoryClick(index)} style={{ cursor: 'pointer' }}>
+                            <div className={classes['story-avatar']} style={{
+                                padding: '2px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
+                            }}>
                                 <img
-                                    src={story.avatar}
-                                    alt={story.username}
-                                    className="rounded-full border-2 border-pink-500 p-[2px] w-16 h-16 object-cover"
+                                    src={story?.mediaUrl || 'https://via.placeholder.com/150'}
+                                    alt={story.user?.username || 'user'}
+                                    style={{ border: '2px solid black' }}
+                                    className="rounded-full w-16 h-16 object-cover"
                                 />
                             </div>
-                            <p className={classes['username']}>{story.username}</p>
+                            <p className={classes['username']}>{story.user?.username || 'user'}</p>
                         </div>
                     </SwiperSlide>
                 ))}
             </Swiper>
+
+            {/* Modal tạo story */}
+            <CreateStoryModal
+                open={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onStoryCreated={fetchStories}
+            />
+
+            {/* Viewer xem story */}
+            <StoryViewer
+                open={isViewerOpen}
+                stories={stories}
+                initialIndex={selectedStoryIndex}
+                onClose={() => setIsViewerOpen(false)}
+            />
         </div>
     );
 }

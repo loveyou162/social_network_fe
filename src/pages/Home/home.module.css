@@ -1,8 +1,22 @@
 .HomePage {
-  overflow-y: auto;
-  height: 100%;
-  /* background-color: lightblue; */
-  box-sizing: border-box; /* Đảm bảo nội dung trong cột phải không bị chạm */
-  padding-right: 20px; /* Đảm bảo có không gian để cuộn nội dung */
-  margin: 0 30%;
+  box-sizing: border-box;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 0 16px 20px;
+  color: white;
+}
+
+/* Trên desktop rộng: đẩy bài viết sang phải 1 chút để cân bằng với sidebar */
+@media (min-width: 1200px) {
+  .HomePage {
+    margin: 0 auto;
+  }
+}
+
+/* Mobile: full width, bỏ padding */
+@media (max-width: 600px) {
+  .HomePage {
+    padding: 0 0 20px;
+    max-width: 100%;
+  }
 }

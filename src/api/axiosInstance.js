@@ -1,8 +1,10 @@
 import axios from 'axios';
+import keycloak from '../keycloak';
+import appConfig from '../config/appConfig';
 
 // Tạo instance mặc định
 const axiosInstance = axios.create({
-    baseURL: process.env.REACT_APP_API_URL || 'https://api.example.com', // URL gốc của API
+    baseURL: appConfig.apiUrl, // URL gốc của API
     timeout: 10000, // 10 giây
     headers: {
         'Content-Type': 'application/json',
@@ -12,7 +14,6 @@ const axiosInstance = axios.create({
 // 🧠 Thêm interceptor cho request
 axiosInstance.interceptors.request.use(
     (config) => {
-        // Nếu có token -> gắn vào header
         const token = localStorage.getItem('access_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -28,11 +29,11 @@ axiosInstance.interceptors.response.use(
     (error) => {
         if (error.response) {
             const { status } = error.response;
-            // Xử lý lỗi 401 (token hết hạn)
             if (status === 401) {
-                console.warn('Token hết hạn hoặc không hợp lệ');
+                console.warn('Token hết hạn hoặc không hợp lệ, đang đăng xuất...');
                 localStorage.removeItem('access_token');
-                // Có thể redirect về trang login tại đây
+                // Chuyển hướng người dùng về trang login nếu cần
+                window.location.href = '/login';
             }
         }
         return Promise.reject(error);

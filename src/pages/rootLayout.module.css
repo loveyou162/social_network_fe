@@ -3,8 +3,29 @@
   grid-template-columns: 20% 80%;
   position: relative;
   box-sizing: border-box;
+  min-height: 100vh;
+  background-color: #000;
 }
 
 .container > main {
-  /* margin-left: 10%; */
+  overflow-y: auto;
+  height: 100vh;
+}
+
+/* Tablet: thu hẹp sidebar thành icon-only */
+@media (max-width: 1200px) {
+  .container {
+    grid-template-columns: 72px 1fr;
+  }
+}
+
+/* Mobile: sidebar ẩn, bottom nav hiện, main chiếm toàn màn hình */
+@media (max-width: 900px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+
+  .container > main {
+    padding-bottom: 60px; /* chừa chỗ cho bottom nav */
+  }
 }

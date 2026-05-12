@@ -131,7 +131,7 @@ class SocketService {
 
     /**
      * Gửi tin nhắn
-     * @param {object} message - { senderId, receiverId, content, type }
+     * @param {object} message - { receiverId, content, messageType }
      */
     sendMessage(message) {
         if (!this.socket || !this.socket.connected) {
@@ -140,24 +140,30 @@ class SocketService {
         }
 
         this.socket.emit('message:send', {
-            senderId: this.userId,
             receiverId: message.receiverId,
             content: message.content,
-            type: message.type || 'text',
+            messageType: message.messageType || 'text',
         });
     }
 
     /**
-     * Đánh dấu tin nhắn đã đọc
-     * @param {number} messageId - ID của tin nhắn
+     * Nhận tin nhắn
+     * @param {function} callback - Hàm xử lý khi có tin nhắn mới
      */
-    markAsRead(messageId) {
-        if (!this.socket || !this.socket.connected) return;
+    onMessageReceive(callback) {
+        this.on('message:receive', callback);
+    }
 
-        this.socket.emit('message:read', {
-            messageId,
-            userId: this.userId,
-        });
+    // ==========================================
+    // NOTIFICATION EVENTS
+    // ==========================================
+
+    /**
+     * Nhận thông báo mới
+     * @param {function} callback - Hàm xử lý khi có thông báo mới
+     */
+    onNotificationReceive(callback) {
+        this.on('notification:receive', callback);
     }
 
     // ==========================================
@@ -172,7 +178,6 @@ class SocketService {
         if (!this.socket || !this.socket.connected) return;
 
         this.socket.emit('typing:start', {
-            senderId: this.userId,
             receiverId,
         });
     }
@@ -185,7 +190,6 @@ class SocketService {
         if (!this.socket || !this.socket.connected) return;
 
         this.socket.emit('typing:stop', {
-            senderId: this.userId,
             receiverId,
         });
     }
@@ -200,7 +204,7 @@ class SocketService {
     getOnlineUsers() {
         if (!this.socket || !this.socket.connected) return;
 
-        this.socket.emit('users:online');
+        this.socket.emit('user:online');
     }
 
     // ==========================================
