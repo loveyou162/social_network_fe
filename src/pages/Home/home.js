@@ -40,7 +40,9 @@ const HomePage = () => {
 
     return (
         <div className={classes.HomePage}>
-            <StorySlider />
+            <div className={classes.feedItem} style={{ borderBottom: 'none' }}>
+                <StorySlider />
+            </div>
             {loading ? (
                 <h4 style={{ color: 'white', textAlign: 'center' }}>Đang tải bảng tin...</h4>
             ) : posts.length === 0 ? (
@@ -56,7 +58,7 @@ const HomePage = () => {
                     loader={<h4 style={{ color: 'white' }}>Đang tải thêm...</h4>}
                 >
                     {posts.map((post) => (
-                        <div key={post.id || post._id} style={{ borderBottom: '1px solid #333', color: 'white' }}>
+                        <div key={post.id || post._id} className={classes.feedItem}>
                             <Article post={post} />
                         </div>
                     ))}

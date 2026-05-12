@@ -10,12 +10,12 @@ export const useSocket = () => useContext(SocketContext);
 export const SocketProvider = ({ children }) => {
     const { user, token } = useSelector((state) => state.auth);
     const [socket, setSocket] = useState(null);
+    const [onlineUsers, setOnlineUsers] = useState([]); // Danh sách user IDs đang online
     const [notification, setNotification] = useState(null);
     const [open, setOpen] = useState(false);
 
     useEffect(() => {
         if (user && token) {
-            // Kết nối tới namespace /messenger (theo cấu hình backend)
             const newSocket = io('http://localhost:5000/messenger', {
                 query: { userId: user.id },
                 auth: { token },
@@ -24,18 +24,39 @@ export const SocketProvider = ({ children }) => {
 
             newSocket.on('connect', () => {
                 console.log('Connected to WebSocket');
+                // Lấy danh sách online ban đầu
+                newSocket.emit('users:online');
+            });
+
+            // Lắng nghe danh sách online
+            newSocket.on('users:online', (data) => {
+                setOnlineUsers(data.userIds || []);
+            });
+
+            // Lắng nghe có người mới online
+            newSocket.on('user:online', (data) => {
+                setOnlineUsers(prev => prev.includes(data.userId) ? prev : [...prev, data.userId]);
+            });
+
+            // Lắng nghe có người offline
+            newSocket.on('user:offline', (data) => {
+                setOnlineUsers(prev => prev.filter(id => id !== data.userId));
             });
 
             // Lắng nghe thông báo
             newSocket.on('notification:receive', (data) => {
-                console.log('New notification received:', data);
                 setNotification(data);
                 setOpen(true);
             });
 
-            // Lắng nghe tin nhắn (nếu cần dùng sau này)
+            // Lắng nghe tin nhắn
             newSocket.on('message:receive', (msg) => {
-                console.log('New message:', msg);
+                setNotification({
+                    actor: msg.sender,
+                    displayContent: `<b>${msg.sender?.username || 'Ai đó'}</b> đã gửi tin nhắn: ${msg.content}`,
+                    type: 'message'
+                });
+                setOpen(true);
             });
 
             setSocket(newSocket);
@@ -52,7 +73,7 @@ export const SocketProvider = ({ children }) => {
     };
 
     return (
-        <SocketContext.Provider value={socket}>
+        <SocketContext.Provider value={{ socket, onlineUsers }}>
             {children}
             
             {/* Hiển thị thông báo nhanh (Toast) */}

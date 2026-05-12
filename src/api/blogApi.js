@@ -47,6 +47,14 @@ const blogApi = {
      */
     getPostDetail: (id) => {
         return axiosInstance.get(`/blog/${id}`);
+    },
+
+    /**
+     * Xóa bài viết
+     * @param {string} id - ID bài viết
+     */
+    deletePost: (id) => {
+        return axiosInstance.delete(`/blog/${id}`);
     }
 };
 

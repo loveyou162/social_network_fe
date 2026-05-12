@@ -3,13 +3,15 @@
   grid-template-columns: 20% 80%;
   position: relative;
   box-sizing: border-box;
-  min-height: 100vh;
-  background-color: #000;
+  height: 100vh;
+  background-color: #09090b;
+  overflow: hidden;
 }
 
 .container > main {
-  overflow-y: auto;
   height: 100vh;
+  overflow-y: auto;
+  position: relative;
 }
 
 /* Tablet: thu hẹp sidebar thành icon-only */

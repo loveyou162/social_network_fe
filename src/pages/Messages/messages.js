@@ -1,222 +1,342 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSelector } from 'react-redux';
+import { 
+    Box, 
+    Typography, 
+    Avatar, 
+    TextField, 
+    IconButton, 
+    List, 
+    ListItem, 
+    ListItemAvatar, 
+    ListItemText,
+    CircularProgress,
+    Divider
+} from '@mui/material';
+import { 
+    Send as SendIcon, 
+    Info as InfoIcon, 
+    Edit as EditIcon,
+    InsertEmoticon as EmojiIcon,
+    Image as ImageIcon,
+    ArrowBack as ArrowBackIcon
+} from '@mui/icons-material';
 import classes from './messages.module.css';
+import messengerApi from '../../api/messengerApi';
+import { useSocket } from '../../context/SocketContext';
+import NewChatModal from '../../component/NewChatModal';
+
+const formatLastSeen = (dateString) => {
+    if (!dateString) return '';
+    const lastSeen = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - lastSeen;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Vừa mới hoạt động';
+    if (diffMins < 60) return `Hoạt động ${diffMins} phút trước`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `Hoạt động ${diffHours} giờ trước`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `Hoạt động ${diffDays} ngày trước`;
+};
 
 const MessagesPage = () => {
-    const [selectedChat, setSelectedChat] = useState(null);
+    const { user: currentUser } = useSelector((state) => state.auth);
+    const { socket, onlineUsers } = useSocket();
+    
+    const [conversations, setConversations] = useState([]);
+    const [selectedConversation, setSelectedConversation] = useState(null);
+    const [messages, setMessages] = useState([]);
     const [messageText, setMessageText] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    
+    const messagesEndRef = useRef(null);
 
-    // Dữ liệu mẫu cho danh sách chat
-    const [conversations] = useState([
-        {
-            id: 1,
-            name: 'Nguyễn Văn A',
-            avatar: 'https://i.pravatar.cc/150?img=1',
-            lastMessage: 'Chào bạn!',
-            time: '10:30',
-            unread: 2,
-        },
-        {
-            id: 2,
-            name: 'Trần Thị B',
-            avatar: 'https://i.pravatar.cc/150?img=2',
-            lastMessage: 'Hẹn gặp lại nhé',
-            time: '09:15',
-            unread: 0,
-        },
-        {
-            id: 3,
-            name: 'Lê Văn C',
-            avatar: 'https://i.pravatar.cc/150?img=3',
-            lastMessage: 'Cảm ơn bạn!',
-            time: 'Hôm qua',
-            unread: 1,
-        },
-        {
-            id: 4,
-            name: 'Phạm Thị D',
-            avatar: 'https://i.pravatar.cc/150?img=4',
-            lastMessage: 'OK, tôi hiểu rồi',
-            time: 'Hôm qua',
-            unread: 0,
-        },
-    ]);
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
 
-    // Dữ liệu mẫu cho tin nhắn
-    const [messages] = useState({
-        1: [
-            { id: 1, text: 'Chào bạn!', sender: 'other', time: '10:28' },
-            { id: 2, text: 'Bạn khỏe không?', sender: 'other', time: '10:29' },
-            { id: 3, text: 'Chào! Tôi khỏe, cảm ơn bạn', sender: 'me', time: '10:30' },
-        ],
-        2: [
-            { id: 1, text: 'Hôm nay gặp nhau nhé', sender: 'me', time: '09:10' },
-            { id: 2, text: 'OK, mấy giờ thế?', sender: 'other', time: '09:12' },
-            { id: 3, text: '2 giờ chiều được không?', sender: 'me', time: '09:13' },
-            { id: 4, text: 'Hẹn gặp lại nhé', sender: 'other', time: '09:15' },
-        ],
-        3: [
-            { id: 1, text: 'Cảm ơn bạn đã giúp đỡ!', sender: 'other', time: '08:45' },
-            { id: 2, text: 'Không có gì, sẵn sàng giúp đỡ bất cứ lúc nào', sender: 'me', time: '08:50' },
-        ],
-        4: [
-            { id: 1, text: 'Tài liệu đã gửi cho bạn rồi', sender: 'me', time: '07:30' },
-            { id: 2, text: 'OK, tôi hiểu rồi', sender: 'other', time: '07:35' },
-        ],
-    });
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
-    const handleSendMessage = (e) => {
-        e.preventDefault();
-        if (messageText.trim() && selectedChat) {
-            // Logic gửi tin nhắn sẽ được thêm ở đây
-            console.log('Gửi tin nhắn:', messageText);
-            setMessageText('');
+    // Lấy danh sách hội thoại
+    const fetchConversations = async () => {
+        try {
+            const res = await messengerApi.getConversations();
+            setConversations(res.data);
+        } catch (error) {
+            console.error('Error fetching conversations:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
+    useEffect(() => {
+        fetchConversations();
+    }, []);
+
+    // Lấy lịch sử tin nhắn khi chọn conversation
+    useEffect(() => {
+        if (!selectedConversation) return;
+
+        // Join room
+        if (socket && selectedConversation.id) {
+            socket.emit('room:join', { conversationId: selectedConversation.id });
+        }
+
+        const fetchHistory = async () => {
+            if (!selectedConversation.id) {
+                setMessages([]);
+                return;
+            }
+            setHistoryLoading(true);
+            try {
+                const res = await messengerApi.getConversationMessages(selectedConversation.id);
+                setMessages(res.data);
+            } catch (error) {
+                console.error('Error fetching messages:', error);
+            } finally {
+                setHistoryLoading(false);
+            }
+        };
+
+        fetchHistory();
+    }, [selectedConversation, socket]);
+
+    // Xử lý WebSocket
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on('message:receive', (msg) => {
+            console.log('MessagesPage: Received message:', msg);
+            
+            // Nếu tin nhắn thuộc conversation đang mở
+            if (selectedConversation && msg.conversationId === selectedConversation.id) {
+                setMessages(prev => {
+                    const exists = prev.find(m => (m.id && m.id === msg.id) || (m.tempId && m.tempId === msg.tempId));
+                    if (exists) return prev;
+                    return [...prev, msg];
+                });
+            }
+
+            // Cập nhật danh sách hội thoại ở Sidebar
+            fetchConversations();
+        });
+
+        return () => {
+            socket.off('message:receive');
+        };
+    }, [socket, selectedConversation]);
+
+    const handleSendMessage = (e) => {
+        e.preventDefault();
+        if (!messageText.trim() || !selectedConversation) return;
+        if (!socket) {
+            console.error('Socket not connected');
+            return;
+        }
+        const tempId = Date.now();
+        const newMessage = {
+            conversationId: selectedConversation.id,
+            content: messageText,
+            senderId: currentUser.id,
+            sender: currentUser,
+            createdAt: new Date().toISOString(),
+            tempId,
+            status: 'sending'
+        };
+
+        // Optimistic Update
+        setMessages(prev => [...prev, newMessage]);
+        const currentText = messageText;
+        setMessageText('');
+
+        // Emit qua Socket
+        socket.emit('message:send', {
+            conversationId: selectedConversation.id,
+            receiverId: selectedConversation.type === 'private' ? selectedConversation.members.find(m => m.userId !== currentUser.id)?.userId : null,
+            content: currentText,
+            tempId
+        }, (response) => {
+            if (response.success && !selectedConversation.id) {
+                // Nếu là hội thoại mới, cập nhật lại conversationId
+                setSelectedConversation(prev => ({...prev, id: response.message.conversationId}));
+                fetchConversations();
+            }
+        });
+    };
+
+    const handleSelectUserFromSearch = (otherUser) => {
+        // Tìm xem đã có hội thoại với người này chưa
+        const existing = conversations.find(c => 
+            c.type === 'private' && c.members.some(m => m.userId === otherUser.id)
+        );
+
+        if (existing) {
+            setSelectedConversation(existing);
+        } else {
+            // Tạo một conversation giả định (chưa có ID) để hiển thị UI
+            setSelectedConversation({
+                id: null,
+                type: 'private',
+                name: otherUser.username,
+                avatar: otherUser.avatarUrl,
+                members: [
+                    { userId: currentUser.id, user: currentUser },
+                    { userId: otherUser.id, user: otherUser }
+                ]
+            });
+        }
+        setIsModalOpen(false);
+    };
+
+    if (loading) {
+        return (
+            <Box className={classes.messagesPage} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
     return (
-        <div className={classes.messagesPage}>
-            {/* Sidebar - Danh sách cuộc trò chuyện */}
-            <div className={classes.sidebar}>
-                <div className={classes.sidebarHeader}>
-                    <h2>Tin nhắn</h2>
-                    <button className={classes.newMessageBtn}>✏️</button>
-                </div>
-                <div className={classes.conversationList}>
+        <Box className={`${classes.messagesPage} ${selectedConversation ? classes.chatOpen : ''}`}>
+            {/* Sidebar */}
+            <Box className={classes.sidebar}>
+                <Box className={classes.sidebarHeader}>
+                    <Typography variant="h6">{currentUser.username}</Typography>
+                    <IconButton onClick={() => setIsModalOpen(true)} className={classes.newMessageBtn}>
+                        <EditIcon />
+                    </IconButton>
+                </Box>
+                
+                <List className={classes.conversationList}>
                     {conversations.map((conv) => (
-                        <div
-                            key={conv.id}
-                            className={`${classes.conversationItem} ${selectedChat === conv.id ? classes.active : ''
-                                }`}
-                            onClick={() => setSelectedChat(conv.id)}
+                        <ListItem 
+                            key={conv.id} 
+                            button 
+                            className={`${classes.conversationItem} ${selectedConversation?.id === conv.id ? classes.active : ''}`}
+                            onClick={() => setSelectedConversation(conv)}
                         >
-                            <img src={conv.avatar} alt={conv.name} className={classes.avatar} />
-                            <div className={classes.conversationInfo}>
-                                <div className={classes.conversationHeader}>
-                                    <span className={classes.name}>{conv.name}</span>
-                                    <span className={classes.time}>{conv.time}</span>
-                                </div>
-                                <div className={classes.conversationFooter}>
-                                    <span
-                                        className={`${classes.lastMessage} ${conv.unread > 0 ? classes.unread : ''
-                                            }`}
+                                <Box className={classes.avatarWrapper}>
+                                    <Avatar 
+                                        src={conv.avatar} 
+                                        className={classes.avatar}
                                     >
-                                        {conv.lastMessage}
-                                    </span>
-                                    {conv.unread > 0 && (
-                                        <span className={classes.unreadBadge}>{conv.unread}</span>
+                                        {conv.name?.charAt(0).toUpperCase()}
+                                    </Avatar>
+                                    {conv.type === 'private' && onlineUsers.includes(conv.members.find(m => m.userId !== currentUser.id)?.userId) && (
+                                        <Box className={classes.onlineDot} />
                                     )}
-                                </div>
-                            </div>
-                        </div>
+                                </Box>
+                            <ListItemText 
+                                primary={<Typography className={classes.name}>{conv.name}</Typography>}
+                                secondary={
+                                    <Typography className={`${classes.lastMessage} ${conv.unreadCount > 0 ? classes.unread : ''}`}>
+                                        {conv.lastMessage?.content || 'Chưa có tin nhắn'}
+                                    </Typography>
+                                }
+                            />
+                            {conv.unreadCount > 0 && <Box className={classes.unreadBadge}>{conv.unreadCount}</Box>}
+                        </ListItem>
                     ))}
-                </div>
-            </div>
+                </List>
+            </Box>
 
-            {/* Chat Area - Khu vực chat */}
-            <div className={classes.chatArea}>
-                {selectedChat ? (
+            {/* Chat Area */}
+            <Box className={classes.chatArea}>
+                {selectedConversation ? (
                     <>
-                        <div className={classes.chatHeader}>
-                            <div className={classes.chatUserInfo}>
-                                <img
-                                    src={
-                                        conversations.find((c) => c.id === selectedChat)?.avatar
-                                    }
-                                    alt="avatar"
-                                    className={classes.chatAvatar}
-                                />
-                                <span className={classes.chatUserName}>
-                                    {conversations.find((c) => c.id === selectedChat)?.name}
-                                </span>
-                            </div>
-                            <button className={classes.infoBtn}>ℹ️</button>
-                        </div>
-
-                        <div className={classes.messagesContainer}>
-                            {messages[selectedChat]?.map((msg) => (
-                                <div
-                                    key={msg.id}
-                                    className={`${classes.message} ${msg.sender === 'me' ? classes.myMessage : classes.otherMessage
-                                        }`}
+                        <Box className={classes.chatHeader}>
+                            <Box className={classes.chatUserInfo}>
+                                <IconButton 
+                                    className={classes.backBtn} 
+                                    onClick={() => setSelectedConversation(null)}
                                 >
-                                    {msg.sender === 'other' && (
-                                        <img
-                                            src={
-                                                conversations.find((c) => c.id === selectedChat)
-                                                    ?.avatar
-                                            }
-                                            alt="avatar"
-                                            className={classes.messageAvatar}
-                                        />
+                                    <ArrowBackIcon />
+                                </IconButton>
+                                <Box className={classes.avatarWrapper}>
+                                    <Avatar src={selectedConversation.avatar} className={classes.chatAvatar} />
+                                    {selectedConversation.type === 'private' && onlineUsers.includes(selectedConversation.members.find(m => m.userId !== currentUser.id)?.userId) && (
+                                        <Box className={classes.onlineDot} />
                                     )}
-                                    <div className={classes.messageContent}>
-                                        <div className={classes.messageText}>{msg.text}</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                </Box>
+                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                    <Typography className={classes.chatUserName}>{selectedConversation.name}</Typography>
+                                    <Typography className={classes.userStatus}>
+                                        {onlineUsers.includes(selectedConversation.members.find(m => m.userId !== currentUser.id)?.userId) 
+                                            ? 'Đang hoạt động' 
+                                            : formatLastSeen(selectedConversation.members.find(m => m.userId !== currentUser.id)?.user?.lastSeenAt)}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <IconButton className={classes.infoBtn}><InfoIcon /></IconButton>
+                        </Box>
+
+                        <Box className={classes.messagesContainer}>
+                            {historyLoading ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress size={24} /></Box>
+                            ) : (
+                                messages.map((msg, index) => (
+                                    <Box 
+                                        key={msg.id || msg.tempId || index} 
+                                        className={`${classes.message} ${msg.senderId === currentUser.id ? classes.myMessage : classes.otherMessage}`}
+                                    >
+                                        {msg.senderId !== currentUser.id && (
+                                            <Avatar src={msg.sender?.avatarUrl} className={classes.messageAvatar} />
+                                        )}
+                                        <Box className={classes.messageContent}>
+                                            <Typography className={classes.messageText}>
+                                                {msg.content}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                ))
+                            )}
+                            <div ref={messagesEndRef} />
+                        </Box>
 
                         <form className={classes.messageInputContainer} onSubmit={handleSendMessage}>
-                            <button type="button" className={classes.emojiBtn}>
-                                😊
-                            </button>
-                            <input
-                                type="text"
-                                placeholder="Nhắn tin..."
-                                value={messageText}
-                                onChange={(e) => setMessageText(e.target.value)}
-                                className={classes.messageInput}
-                            />
-                            <button
-                                type="submit"
-                                className={classes.sendBtn}
-                                disabled={!messageText.trim()}
-                            >
-                                Gửi
-                            </button>
+                            <Box className={classes.inputWrapper}>
+                                <IconButton className={classes.emojiBtn}><EmojiIcon /></IconButton>
+                                <input
+                                    placeholder="Nhắn tin..."
+                                    value={messageText}
+                                    onChange={(e) => setMessageText(e.target.value)}
+                                    className={classes.customInput}
+                                    autoComplete="off"
+                                />
+                                {messageText.trim() ? (
+                                    <button type="submit" className={classes.sendBtnText}>Gửi</button>
+                                ) : (
+                                    <Box sx={{ display: 'flex' }}>
+                                        <IconButton className={classes.actionBtn}><ImageIcon /></IconButton>
+                                    </Box>
+                                )}
+                            </Box>
                         </form>
                     </>
                 ) : (
-                    <div className={classes.noChat}>
-                        <div className={classes.noChatContent}>
-                            <h2>Tin nhắn của bạn</h2>
-                            <p>Gửi ảnh và tin nhắn riêng tư cho bạn bè hoặc nhóm</p>
-                            <button className={classes.sendMessageBtn}>Gửi tin nhắn</button>
-                        </div>
-                    </div>
+                    <Box className={classes.noChat}>
+                        <Box className={classes.noChatContent}>
+                            <Typography variant="h5">Tin nhắn của bạn</Typography>
+                            <Typography variant="body2">Gửi ảnh và tin nhắn riêng tư cho bạn bè.</Typography>
+                            <button className={classes.sendMessageBtn} onClick={() => setIsModalOpen(true)}>Gửi tin nhắn</button>
+                        </Box>
+                    </Box>
                 )}
-            </div>
-        </div>
+            </Box>
+
+            <NewChatModal 
+                open={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                onSelectUser={handleSelectUserFromSearch} 
+            />
+        </Box>
     );
 };
 
 export default MessagesPage;
-
-const STATUS_HTML_MAP: Record<string, string> = {
-    PENDING:  // Chờ duyệt
-        '<div style="display:flex;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-items:center;justify-content:center;width:100%;height:30px;padding:0 16px;background:#FEF9C2;color:#FFA600;font-weight:700;font-size:14px;border-radius:15px;border:1px solid #BAB046;">Chờ phê duyệt</div>',
-
-    WAIT_SIGN:  // Chờ tiếp nhận (hoặc Chờ ký)
-        '<div style="display:flex;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-items:center;justify-content:center;width:100%;height:30px;padding:0 16px;background:#E6F7FF;color:#0369A1;font-weight:700;font-size:14px;border-radius:15px;border:1px solid #A8D8FF;">Chờ tiếp nhận</div>',
-
-    WAIT_COMMANDER:  // Chờ chỉ huy → Đổi sang nâu
-        '<div style="display:flex;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-items:center;justify-content:center;width:100%;height:30px;padding:0 16px;background:#FFE8CC;color:#C05600;font-weight:700;font-size:14px;border-radius:15px;border:1px solid #C05600;">Chờ chỉ huy</div>',
-
-    WAIT_RECEIVE:  // Chờ tiếp nhận (nếu có key riêng)
-        '<div style="display:flex;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-items:center;justify-content:center;width:100%;height:30px;padding:0 16px;background:#E6F7FF;color:#0369A1;font-weight:700;font-size:14px;border-radius:15px;border:1px solid #A8D8FF;">Chờ tiếp nhận</div>',
-
-    IN_USE:  // Đang sử dụng
-        '<div style="display:flex;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-items:center;justify-content:center;width:100%;height:30px;padding:0 16px;background:#ACCBFF;color:#002089;font-weight:700;font-size:14px;border-radius:15px;border:1px solid #579FFF;">Đang sử dụng</div>',
-
-    APPROVED:  // Đã phê duyệt (nếu vẫn dùng key này, mình giữ màu xanh dương giống Đang sử dụng)
-        '<div style="display:flex;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-items:center;justify-content:center;width:100%;height:30px;padding:0 16px;background:#DBEAFE;color:#0062AD;font-weight:700;font-size:14px;border-radius:15px;border:1px solid #82B8FF;">Đã phê duyệt</div>',
-
-    COMPLETED:  // Hoàn tất
-        '<div style="display:flex;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-items:center;justify-content:center;width:100%;height:30px;padding:0 16px;background:#E0F7FA;color:#F44336;font-weight:700;font-size:14px;border-radius:15px;border:1px solid #FFA2A2;">Hoàn tất</div>',
-
-    REJECTED:  // Từ chối
-        '<div style="display:flex;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-items:center;justify-content:center;width:100%;height:30px;padding:0 16px;background:#FFDCD9;color:#F44336;font-weight:700;font-size:14px;border-radius:15px;border:1px solid #FFA2A2;">Từ chối</div>',
-
-    CANCELLED:  // Đã hủy
-        '<div style="display:flex;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-items:center;justify-content:center;width:100%;height:30px;padding:0 16px;background:#E0E0E0;color:#555555;font-weight:700;font-size:14px;border-radius:15px;border:1px solid #AEB5BE;">Đã hủy</div>',
-};

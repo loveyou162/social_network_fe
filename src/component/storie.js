@@ -11,12 +11,13 @@ import { useSelector } from 'react-redux';
 import { Add } from '@mui/icons-material';
 
 export default function StorySlider() {
-    const [stories, setStories] = useState([]);
+    const [groupedStories, setGroupedStories] = useState({});
+    const [storyUsers, setStoryUsers] = useState([]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isViewerOpen, setIsViewerOpen] = useState(false);
-    const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
+    const [activeUserStories, setActiveUserStories] = useState([]);
     const { user } = useSelector((state) => state.auth);
-    console.log(user, stories);
+
     useEffect(() => {
         fetchStories();
     }, []);
@@ -24,14 +25,30 @@ export default function StorySlider() {
     const fetchStories = async () => {
         try {
             const response = await storyApi.getStoryFeed();
-            setStories(response.data || response);
+            const rawStories = response.data || response;
+            
+            // Nhóm story theo userId
+            const groups = rawStories.reduce((acc, story) => {
+                const userId = story.user?.id;
+                if (!acc[userId]) {
+                    acc[userId] = {
+                        user: story.user,
+                        stories: []
+                    };
+                }
+                acc[userId].stories.push(story);
+                return acc;
+            }, {});
+
+            setGroupedStories(groups);
+            setStoryUsers(Object.values(groups));
         } catch (error) {
             console.error('Lỗi khi lấy stories:', error);
         }
     };
 
-    const handleStoryClick = (index) => {
-        setSelectedStoryIndex(index);
+    const handleUserClick = (userGroup) => {
+        setActiveUserStories(userGroup.stories);
         setIsViewerOpen(true);
     };
 
@@ -75,22 +92,22 @@ export default function StorySlider() {
                     </div>
                 </SwiperSlide>
 
-                {stories.map((story, index) => (
-                    <SwiperSlide key={story.id}>
-                        <div className={classes['group-item']} onClick={() => handleStoryClick(index)} style={{ cursor: 'pointer' }}>
+                {storyUsers.map((userGroup) => (
+                    <SwiperSlide key={userGroup.user?.id}>
+                        <div className={classes['group-item']} onClick={() => handleUserClick(userGroup)} style={{ cursor: 'pointer' }}>
                             <div className={classes['story-avatar']} style={{
                                 padding: '2px',
                                 borderRadius: '50%',
                                 background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)'
                             }}>
                                 <img
-                                    src={story?.mediaUrl || 'https://via.placeholder.com/150'}
-                                    alt={story.user?.username || 'user'}
+                                    src={userGroup.user?.avatarUrl || 'https://via.placeholder.com/150'}
+                                    alt={userGroup.user?.username || 'user'}
                                     style={{ border: '2px solid black' }}
                                     className="rounded-full w-16 h-16 object-cover"
                                 />
                             </div>
-                            <p className={classes['username']}>{story.user?.username || 'user'}</p>
+                            <p className={classes['username']}>{userGroup.user?.username || 'user'}</p>
                         </div>
                     </SwiperSlide>
                 ))}
@@ -106,8 +123,8 @@ export default function StorySlider() {
             {/* Viewer xem story */}
             <StoryViewer
                 open={isViewerOpen}
-                stories={stories}
-                initialIndex={selectedStoryIndex}
+                stories={activeUserStories}
+                initialIndex={0}
                 onClose={() => setIsViewerOpen(false)}
             />
         </div>

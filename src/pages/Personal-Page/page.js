@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 import userApi from '../../api/userApi';
 import EditProfileModal from '../../component/EditProfileModal';
+import PostDetailModal from '../../component/PostDetailModal';
 
 const PersonalPage = () => {
     const { id } = useParams();
@@ -12,6 +13,10 @@ const PersonalPage = () => {
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
+    
+    // Popup bài viết
+    const [selectedPost, setSelectedPost] = useState(null);
+    const [isPostModalOpen, setIsPostModalOpen] = useState(false);
 
     const targetUserId = id || currentUser?.id;
     const isOwnProfile = !id || Number(id) === currentUser?.id;
@@ -66,7 +71,15 @@ const PersonalPage = () => {
     }
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px', p: { xs: '10px', md: '20px' }, color: 'white' }}>
+        <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '20px', 
+            p: { xs: '10px', md: '20px' }, 
+            color: 'white',
+            height: '100vh',
+            overflowY: 'auto'
+        }}>
             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 <Box sx={{ 
                     display: 'flex', 
@@ -190,18 +203,26 @@ const PersonalPage = () => {
                 {profile.blogs?.map((post) => (
                     <Box
                         key={post.id}
+                        onClick={() => {
+                            setSelectedPost(post);
+                            setIsPostModalOpen(true);
+                        }}
                         sx={{
                             width: '100%',
                             aspectRatio: '1/1',
                             overflow: 'hidden',
                             position: 'relative',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            '&:hover img': {
+                                transform: 'scale(1.05)',
+                                filter: 'brightness(0.8)'
+                            }
                         }}
                     >
                         <img
-                            src={post.mediaUrl}
+                            src={post.mediaUrl || post.mediaUrls?.[0]}
                             alt={post.caption}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'all 0.3s ease' }}
                         />
                     </Box>
                 ))}
@@ -212,6 +233,11 @@ const PersonalPage = () => {
                 onClose={() => setIsEditModalOpen(false)} 
                 user={profile} 
                 onUpdate={fetchProfile}
+            />
+            <PostDetailModal 
+                open={isPostModalOpen}
+                onClose={() => setIsPostModalOpen(false)}
+                post={selectedPost}
             />
         </Box>
     );

@@ -24,7 +24,10 @@ import {
     TextField,
     Divider,
     CircularProgress,
+    Menu,
+    MenuItem
 } from '@mui/material';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import blogApi from '../api/blogApi';
 
 const formatTime = (dateStr) => {
@@ -54,6 +57,10 @@ const Article = ({ post: initialPost }) => {
     const [commentText, setCommentText] = useState('');
     const [loadingComments, setLoadingComments] = useState(false);
     const [submittingComment, setSubmittingComment] = useState(false);
+    
+    // Post options menu
+    const [anchorEl, setAnchorEl] = useState(null);
+    const openMenu = Boolean(anchorEl);
 
     if (!post) return null;
 
@@ -110,6 +117,29 @@ const Article = ({ post: initialPost }) => {
         }
     };
 
+    const handleMenuClick = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+    
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+    };
+
+    const handleDelete = async () => {
+        if (window.confirm('Bạn có chắc muốn xóa bài viết này không?')) {
+            try {
+                await blogApi.deletePost(post.id);
+                // Vì không có state quản lý danh sách post ở đây, ta có thể reload trang
+                // hoặc tốt hơn là truyền một callback onUpdate từ Home xuống
+                window.location.reload(); 
+            } catch (error) {
+                console.error('Xóa bài viết thất bại:', error);
+                alert('Không thể xóa bài viết. Vui lòng thử lại sau.');
+            }
+        }
+        handleMenuClose();
+    };
+
     return (
         <div className={classes['article']}>
             {/* Header */}
@@ -133,9 +163,27 @@ const Article = ({ post: initialPost }) => {
                     <p className={classes['article_header_time']}>{formatTime(post.createdAt)}</p>
                 </div>
                 <div className={classes['article_header-right']}>
-                    <span className={classes['article_header_avartar']}>
-                        <MenuOutlinedIcon />
-                    </span>
+                    <IconButton onClick={handleMenuClick} sx={{ color: 'white' }}>
+                        <MoreHorizIcon />
+                    </IconButton>
+                    <Menu
+                        anchorEl={anchorEl}
+                        open={openMenu}
+                        onClose={handleMenuClose}
+                        PaperProps={{
+                            sx: { bgcolor: '#262626', color: 'white' }
+                        }}
+                    >
+                        {author?.id === currentUser?.id ? (
+                            [
+                                <MenuItem key="edit" onClick={handleMenuClose} sx={{ color: 'white' }}>Chỉnh sửa</MenuItem>,
+                                <MenuItem key="delete" onClick={handleDelete} sx={{ color: '#ed4956', fontWeight: 'bold' }}>Xóa</MenuItem>
+                            ]
+                        ) : (
+                            <MenuItem onClick={handleMenuClose} sx={{ color: 'white' }}>Báo cáo</MenuItem>
+                        )}
+                        <MenuItem onClick={handleMenuClose} sx={{ color: 'white' }}>Hủy</MenuItem>
+                    </Menu>
                 </div>
             </div>
 
@@ -147,7 +195,11 @@ const Article = ({ post: initialPost }) => {
                     slidesPerView={1}
                     pagination={{ clickable: true }}
                     navigation={mediaUrls.length > 1}
-                    style={{ '--swiper-navigation-color': 'white', '--swiper-pagination-color': 'white' }}
+                    observer={true}
+                    observeParents={true}
+                    resizeObserver={true}
+                    autoHeight={true}
+                    style={{ '--swiper-navigation-color': 'white', '--swiper-pagination-color': 'white', width: '100%' }}
                 >
                     {mediaUrls.map((url, i) => (
                         <SwiperSlide key={i} className={classes['article-slider-item']}>
@@ -235,6 +287,9 @@ const Article = ({ post: initialPost }) => {
                             slidesPerView={1}
                             pagination={{ clickable: true }}
                             navigation={mediaUrls.length > 1}
+                            observer={true}
+                            observeParents={true}
+                            resizeObserver={true}
                             style={{ width: '100%', height: '100%', '--swiper-navigation-color': 'white', '--swiper-pagination-color': 'white' }}
                         >
                             {mediaUrls.map((url, i) => (

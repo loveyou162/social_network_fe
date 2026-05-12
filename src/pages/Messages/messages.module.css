@@ -1,12 +1,11 @@
 .messagesPage {
     display: flex;
-    height: calc(100vh - 60px);
-    background-color: #000;
+    height: 100vh;
+    background-color: #09090b;
     color: #fff;
-    max-width: 1200px;
-    margin: 0 auto;
-    border: 1px solid #262626;
-    border-radius: 8px;
+    max-width: 100%;
+    margin: 0;
+    border: none;
     overflow: hidden;
 }
 
@@ -16,7 +15,7 @@
     border-right: 1px solid #262626;
     display: flex;
     flex-direction: column;
-    background-color: #000;
+    background-color: #09090b;
 }
 
 .sidebarHeader {
@@ -56,11 +55,29 @@
 }
 
 .conversationItem:hover {
-    background-color: #1a1a1a;
+    background-color: #18181b;
 }
 
 .conversationItem.active {
-    background-color: #262626;
+    background-color: #27272a;
+}
+
+.avatarWrapper {
+    position: relative;
+    display: inline-flex;
+    margin-right: 15px; /* Để bù cho ListItemAvatar */
+}
+
+.onlineDot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    background-color: #4ade80;
+    border: 2px solid #09090b;
+    border-radius: 50%;
+    z-index: 2;
 }
 
 .avatar {
@@ -157,6 +174,49 @@
     font-size: 16px;
 }
 
+.userStatus {
+    font-size: 12px;
+    color: #8e8e8e;
+}
+
+.backBtn {
+    display: none !important;
+    color: #fff !important;
+    padding: 4px !important;
+    margin-right: 8px !important;
+}
+
+/* Mobile Responsive for Messaging */
+@media (max-width: 900px) {
+    .sidebar {
+        width: 100% !important;
+        border-right: none !important;
+    }
+
+    .chatArea {
+        width: 100% !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: calc(100vh - 60px); /* Chừa chỗ cho bottom nav nếu có */
+        z-index: 1000;
+        background-color: #09090b;
+        display: none;
+    }
+
+    .messagesPage.chatOpen .sidebar {
+        display: none;
+    }
+
+    .messagesPage.chatOpen .chatArea {
+        display: flex;
+    }
+
+    .backBtn {
+        display: flex !important;
+    }
+}
+
 .infoBtn {
     background: none;
     border: none;
@@ -220,52 +280,46 @@
 .messageInputContainer {
     display: flex;
     align-items: center;
-    padding: 15px 20px;
-    border-top: 1px solid #262626;
+    padding: 10px 20px 20px; /* Thêm padding bottom để tránh sát mép màn hình */
     gap: 10px;
 }
 
-.emojiBtn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 5px;
-}
-
-.messageInput {
+.inputWrapper {
     flex: 1;
+    display: flex;
+    align-items: center;
     background-color: transparent;
     border: 1px solid #262626;
     border-radius: 22px;
-    padding: 10px 16px;
+    padding: 0 12px;
+}
+
+.customInput {
+    flex: 1;
+    background-color: transparent;
+    border: none;
+    padding: 10px 8px;
     color: #fff;
     font-size: 14px;
     outline: none;
 }
 
-.messageInput::placeholder {
+.customInput::placeholder {
     color: #8e8e8e;
 }
 
-.messageInput:focus {
-    border-color: #8e8e8e;
-}
-
-.sendBtn {
+.sendBtnText {
     background: none;
     border: none;
     color: #0095f6;
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;
-    padding: 8px 16px;
+    padding: 0 8px;
 }
 
-.sendBtn:disabled {
-    color: #0095f6;
-    opacity: 0.3;
-    cursor: not-allowed;
+.actionBtn {
+    color: #fff;
 }
 
 /* No Chat Selected */

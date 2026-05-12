@@ -12,6 +12,15 @@
     /* padding: 10px 600px; */
 }
 
+.personalPage {
+    max-width: 935px;
+    margin: 0 auto;
+    padding: 30px 20px;
+    color: #fff;
+    height: 100vh;
+    overflow-y: auto;
+}
+
 .avatar{
     width: 150px;
     height: 150px;

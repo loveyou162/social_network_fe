@@ -1,9 +1,18 @@
 .HomePage {
   box-sizing: border-box;
-  max-width: 620px;
-  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 0 16px 20px;
   color: white;
+}
+
+.feedItem {
+  width: 100%;
+  max-width: 470px; /* Giới hạn độ rộng bài viết đúng chuẩn Instagram */
+  border-bottom: 1px solid #262626;
+  margin-bottom: 12px;
 }
 
 /* Trên desktop rộng: đẩy bài viết sang phải 1 chút để cân bằng với sidebar */

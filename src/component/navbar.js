@@ -69,8 +69,8 @@ export default function SidebarInstagram() {
         },
     ];
 
-    // Mobile chỉ hiện 5 item chính
-    const mobileItems = allMenuItems.filter(i => ['home', 'search', 'notify', 'create', 'profile'].includes(i.id));
+    // Mobile hiện các item chính (thêm messages để người dùng dễ truy cập)
+    const mobileItems = allMenuItems.filter(i => ['home', 'search', 'messages', 'create', 'profile'].includes(i.id));
 
     const handleMenuClick = (item) => {
         if (item.onClick) {
